@@ -7,19 +7,19 @@ yup () {
   elif (( $+commands[npm] )); then
     local pm_cmd="npm install"
   else
-    echo "yarn or npm not found, exiting..."
+    echo "$fg[red]yarn or npm not found, exiting...$reset_color"
     return 1
   fi
 
   # make sure jq is installed
   if (( ! $+commands[jq] )); then
-    echo "jq not found, exiting..."
+    echo "$fg[red]jq not found, exiting...$reset_color"
     return 1
   fi
 
   # make sure there's a package.json in the current directory
   if ! test -f "./package.json"; then
-    echo "no package.json file in current directory, exiting..."
+    echo "$fg[red]no package.json file in current directory, exiting...$reset_color"
     return 1
   fi
   
@@ -62,7 +62,7 @@ eof
 
   # if there aren't any dependencies, exit the function
   if test -z "$deps"; then
-    echo "no $scope in package.json"
+    echo "$fg[blue]no $scope in package.json$reset_color"
     return 0
   fi
 
@@ -70,7 +70,7 @@ eof
   local cmd_to_run="$pm_cmd $deps"
 
   # run the command
-  echo "Updating $scope..."
+  echo "$fg_bold[blue]Updating $scope...$reset_color"
   eval "$cmd_to_run"
 
   # if the both arg was passed, run the command again, but for devDependencies
@@ -84,7 +84,7 @@ eof
 
     # if there aren't any dependencies, exit the function
     if test -z "$deps"; then
-      echo "no $scope in package.json"
+      echo "$fg[blue]no $scope in package.json$reset_color"
       return 0
     fi
 
@@ -92,7 +92,7 @@ eof
     cmd_to_run="$pm_cmd $deps"
 
     # run the command
-    echo "Updating $scope..."
+    echo "$fg_bold[blue]Updating $scope...$reset_color"
     eval "$cmd_to_run"
   fi
 
