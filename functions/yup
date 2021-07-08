@@ -1,0 +1,103 @@
+#!/usr/bin/env zsh
+
+yup () {
+  # check if a package manager is installed
+  if (( $+commands[yarn] )); then
+    local pm_cmd="yarn add"
+  elif (( $+commands[npm] )); then
+    local pm_cmd="npm install"
+  else
+    echo "yarn or npm not found, exiting..."
+    return 1
+  fi
+
+  # make sure jq is installed
+  if (( ! $+commands[jq] )); then
+    echo "jq not found, exiting..."
+    return 1
+  fi
+
+  # make sure there's a package.json in the current directory
+  if ! test -f "./package.json"; then
+    echo "no package.json file in current directory, exiting..."
+    return 1
+  fi
+  
+  # set default dependency scope
+  local scope="dependencies"
+  local both=false
+
+  # check for args
+  for arg in "$@"; do
+    # help/usage command
+    if test "$arg" = "-h" -o "$arg" = "--help"; then
+      cat << 'eof'
+Usage: yup [-h/--help] [-d/--dev] [-D/--both] [-n/--npm]
+Options:
+    -h, --help  show this help message
+    -d, --dev   update the devDependencies
+    -b, --both  update both dependencies and devDependencies
+    -n, --npm   update the dependencies using npm instead of yarn
+eof
+      return 0;
+    fi
+
+    # set the command to use npm if the arg is passed
+    if test "$arg" = "-n" -o "$arg" = "--npm"; then
+      pm_cmd="npm install"
+    fi
+
+    #  set scope to devDependencies if the arg is passed
+    if test "$arg" = "-d" -o "$arg" = "--dev"; then
+      scope="devDependencies"
+      pm_cmd="$pm_cmd --save-dev"
+    elif test "$arg" = "-b" -o "$arg" = "--both"; then
+      both=true
+    fi
+  done
+
+  # grab deps from package.json
+  # start with empty object and add the deps
+  local deps="$(jq "{}+.$scope|keys|map(.+\" \")+[\"\"]|add" ./package.json | sed -E 's/^\"//; s/( )?\"$//')"
+
+  # if there aren't any dependencies, exit the function
+  if test -z "$deps"; then
+    echo "no $scope in package.json"
+    return 0
+  fi
+
+  # set the command to run
+  local cmd_to_run="$pm_cmd $deps"
+
+  # run the command
+  echo "Updating $scope..."
+  eval "$cmd_to_run"
+
+  # if the both arg was passed, run the command again, but for devDependencies
+  if $both; then
+    # change the scope to devDependencies
+    pm_cmd="$pm_cmd --save-dev"
+    scope="devDependencies"
+    
+    # grab the deps again
+    deps="$(jq "{}+.$scope|keys|map(.+\" \")+[\"\"]|add" ./package.json | sed -E 's/^\"//; s/( )?\"$//')"
+
+    # if there aren't any dependencies, exit the function
+    if test -z "$deps"; then
+      echo "no $scope in package.json"
+      return 0
+    fi
+
+    # set the command to run
+    cmd_to_run="$pm_cmd $deps"
+
+    # run the command
+    echo "Updating $scope..."
+    eval "$cmd_to_run"
+  fi
+
+  # end the function
+  echo "Upgrades finished!"
+  return 0
+}
+
